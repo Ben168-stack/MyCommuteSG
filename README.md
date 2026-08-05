@@ -23,6 +23,39 @@ git merge development         # merge your dev branch into main
 git push origin main          # push updated main to remote
 ```
 
+## Setup Virtual Environment
+**Windows**
+
+```bash
+python -m venv .venv
+```
+
+**macOS / Linux**
+
+```bash
+python3 -m venv .venv
+```
+
+### 3. Activate the virtual environment
+
+**Windows (Command Prompt)**
+
+```cmd
+.venv\Scripts\activate
+```
+
+**Windows (PowerShell)**
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+## Update Requirements.txt
+```
+pip freeze > requirements.txt 
+# Make sure you activate your virtual env to not add any of your global libraries.
+```
+
 
 ## Git Commands To Note
 
