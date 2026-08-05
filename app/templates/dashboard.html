@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+  <h2>Plan your trip</h2>
+  <form class="route-form" method="get" action="{{ url_for('views.dashboard') }}">
+    <label>
+      From
+      <select name="origin">
+        {% for p in places %}
+        <option value="{{ p }}" {% if p == origin %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      To
+      <select name="destination">
+        {% for p in places %}
+        <option value="{{ p }}" {% if p == destination %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Plan trip</button>
+  </form>
+
+  {% if route_error %}
+    <p class="alert alert-warning">{{ route_error }}</p>
+  {% elif route %}
+    <div class="route-legs">
+      {% for leg in route %}
+        <span class="leg-chip">{{ leg.label }}<br><small>{{ leg.from }} &rarr; {{ leg.to }}</small></span>
+        {% if not loop.last %}<span class="leg-arrow">&raquo;</span>{% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+
+{% if summary %}
+<section class="card alert alert-{{ summary.severity }}">
+  <strong>{{ summary.title }}</strong> &mdash; {{ summary.message }}
+</section>
+{% endif %}
+
+{% if recommendations %}
+<section class="card">
+  <h2>Recommendations for this trip</h2>
+  <div class="rec-list">
+    {% for rec in recommendations %}
+    <div class="rec rec-{{ rec.severity }}">
+      <div class="rec-title">{{ rec.title }}</div>
+      <div class="rec-message">{{ rec.message }}</div>
+      {% if rec.action %}<div class="rec-action">&#8227; {{ rec.action }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% elif route %}
+<section class="card">
+  <p class="alert alert-info">No issues detected on this route right now &mdash; good service, clear weather.</p>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Line status</h2>
+  <div class="line-grid">
+    {% for line in lines %}
+    <div class="line-chip" style="border-left-color: {{ line.color }}">
+      <div class="line-name">
+        <span class="dot" style="background: {{ line.color }}"></span>
+        {{ line.name }} <small>({{ line.code }})</small>
+      </div>
+      {% if line.status %}
+        <div class="line-status status-{{ 'critical' if line.status.severity == 'disruption' else 'warning' }}">
+          {{ line.status.severity | capitalize }}: {{ line.status.message }}
+        </div>
+      {% else %}
+        <div class="line-status status-ok">Good service</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>Weather nowcast by region</h2>
+  <div class="weather-grid">
+    {% for region in regions %}
+    {% set condition = weather.get(region, 'clear') %}
+    <div class="weather-chip weather-{{ condition }}">
+      <div class="weather-region">{{ region }}</div>
+      <div class="weather-condition">
+        {% if condition == 'heavy_rain' %}Heavy rain
+        {% elif condition == 'light_rain' %}Light rain
+        {% else %}Clear{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>Planned works &amp; events (next few days)</h2>
+  {% if planned_works %}
+    {% for w in planned_works %}
+    <div class="work-item">
+      <div class="work-title">{{ w.title }}</div>
+      <div class="work-when">{{ w.start.strftime('%a %d %b, %I:%M%p') }} &ndash; {{ w.end.strftime('%I:%M%p') }}</div>
+      <div class="work-desc">{{ w.description }}</div>
+      <div class="work-advisory">&#8227; {{ w.advisory }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p>No planned works or events flagged.</p>
+  {% endif %}
+</section>
+
+<section class="card simulate-panel">
+  <h2>Simulate an event <small>(demo control panel)</small></h2>
+  <div class="simulate-grid">
+    <form method="post" action="{{ url_for('views.simulate_disruption') }}" class="sim-form">
+      <input type="hidden" name="origin" value="{{ origin }}">
+      <input type="hidden" name="destination" value="{{ destination }}">
+      <h3>Trigger service alert</h3>
+      <select name="line">
+        {% for code, line in line_choices.items() %}
+        <option value="{{ code }}">{{ line.name }} ({{ code }})</option>
+        {% endfor %}
+      </select>
+      <select name="severity">
+        <option value="delay">Delay</option>
+        <option value="disruption">Disruption</option>
+      </select>
+      <input type="text" name="message" placeholder="Custom message (optional)">
+      <button type="submit">Trigger</button>
+    </form>
+
+    <form method="post" action="{{ url_for('views.simulate_clear_disruption') }}" class="sim-form">
+      <input type="hidden" name="origin" value="{{ origin }}">
+      <input type="hidden" name="destination" value="{{ destination }}">
+      <h3>Clear service alert</h3>
+      <select name="line">
+        {% for code, line in line_choices.items() %}
+        <option value="{{ code }}">{{ line.name }} ({{ code }})</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Clear</button>
+    </form>
+
+    <form method="post" action="{{ url_for('views.simulate_weather') }}" class="sim-form">
+      <input type="hidden" name="origin" value="{{ origin }}">
+      <input type="hidden" name="destination" value="{{ destination }}">
+      <h3>Set weather</h3>
+      <select name="region">
+        {% for region in regions %}
+        <option value="{{ region }}">{{ region }}</option>
+        {% endfor %}
+      </select>
+      <select name="condition">
+        <option value="clear">Clear</option>
+        <option value="light_rain">Light rain</option>
+        <option value="heavy_rain">Heavy rain</option>
+      </select>
+      <button type="submit">Set</button>
+    </form>
+
+    <form method="post" action="{{ url_for('views.simulate_reset') }}" class="sim-form">
+      <input type="hidden" name="origin" value="{{ origin }}">
+      <input type="hidden" name="destination" value="{{ destination }}">
+      <h3>Reset everything</h3>
+      <p>Clears all alerts and restores baseline demo data.</p>
+      <button type="submit" class="btn-secondary">Reset</button>
+    </form>
+  </div>
+</section>
+
+{% endblock %}
