@@ -1,0 +1,14 @@
+[Unit]
+Description=MyCommute SG Flask app (gunicorn)
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/LTA_Hackathon
+Environment="PATH=/home/ec2-user/LTA_Hackathon/venv/bin"
+ExecStart=/home/ec2-user/LTA_Hackathon/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 main:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
